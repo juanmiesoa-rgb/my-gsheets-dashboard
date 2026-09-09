@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FinControl · Dashboard de Gastos</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/css/inter@latest/index.css">
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+        colors: {
+          brand: {
+            50:'#eefdf5',100:'#d6fae7',200:'#b0f4d1',300:'#7ae8b2',
+            400:'#43d48d',500:'#1fb974',600:'#11945c',700:'#0e764c',
+            800:'#0f5e3f',900:'#0d4e36'
+          }
+        },
+        animation: {
+          'fade-in': 'fadeIn .4s ease-out both',
+          'slide-up': 'slideUp .4s ease-out both',
+        },
+        keyframes: {
+          fadeIn: { '0%':{opacity:0}, '100%':{opacity:1} },
+          slideUp: { '0%':{opacity:0, transform:'translateY(10px)'}, '100%':{opacity:1, transform:'translateY(0)'} }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { font-family: 'Inter', sans-serif; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(148,163,184,.35); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,.55); }
+  .glass { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .gradient-ring {
+    background: linear-gradient(135deg, rgba(31,185,116,.15), rgba(59,130,246,.15), rgba(168,85,247,.15));
+  }
+  .kpi-card { transition: transform .25s ease, box-shadow .25s ease; }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:9999px; font-size:11px; font-weight:600; letter-spacing:.02em; }
+  .dot { width:6px; height:6px; border-radius:9999px; display:inline-block; }
+  .table-row { transition: background-color .15s ease; }
+  .modal-backdrop { animation: fadeIn .2s ease-out both; }
+  .modal-panel { animation: slideUp .25s ease-out both; }
+  input, select, textarea { font-family: 'Inter', sans-serif; }
+  .btn-primary {
+    background: linear-gradient(135deg, #11945c 0%, #1fb974 100%);
+    transition: all .2s ease;
+  }
+  .btn-primary:hover { filter: brightness(1.08); box-shadow: 0 8px 24px -8px rgba(31,185,116,.5); }
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite;
+  }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 min-h-screen transition-colors">
+
+<!-- Background decoration -->
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+  <div class="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-emerald-400/10 dark:bg-emerald-500/10 blur-3xl"></div>
+  <div class="absolute top-1/2 -left-40 w-96 h-96 rounded-full bg-blue-400/10 dark:bg-blue-500/10 blur-3xl"></div>
+</div>
+
+<!-- Header -->
+<header class="sticky top-0 z-30 glass bg-white/70 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800">
+  <div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 14l4-4 4 4 5-6"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight">FinControl</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 -mt-0.5">Dashboard de Control de Gastos</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="syncBtn" class="hidden sm:inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0114.85-3.36L20 4M20 15a9 9 0 01-14.85 3.36L4 20"/></svg>
+        <span>Sincronizar</span>
+      </button>
+      <button id="newBtn" class="btn-primary inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-white rounded-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        <span>Nuevo</span>
+      </button>
+      <button id="themeBtn" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center justify-center" title="Cambiar tema">
+        <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M7.05 16.95l-1.414 1.414m12.728 0l-1.414-1.414M7.05 7.05L5.636 5.636M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+  <!-- Filters -->
+  <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+    <div class="flex items-center gap-2 mb-3">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+      <h2 class="text-sm font-semibold">Filtros</h2>
+      <button id="resetFilters" class="ml-auto text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Limpiar</button>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div>
+        <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Desde</label>
+        <input id="fFrom" type="date" class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+      </div>
+      <div>
+        <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Hasta</label>
+        <input id="fTo" type="date" class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+      </div>
+      <div>
+        <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Categoría</label>
+        <select id="fCat" class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Grupo / Fondo</label>
+        <select id="fGroup" class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Tipo</label>
+        <select id="fType" class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+          <option value="">Todos</option>
+          <option>Movimiento</option>
+          <option>Ajuste Cerrado</option>
+          <option>Ajuste Pendiente</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- KPIs -->
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="kpi-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm animate-slide-up">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Gastos</span>
+        <div class="w-9 h-9 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+        </div>
+      </div>
+      <div id="kpiExpenses" class="mt-3 text-2xl font-bold tracking-tight">0,00 €</div>
+      <div id="kpiExpensesSub" class="text-xs text-slate-500 mt-1">0 movimientos</div>
+    </div>
+
+    <div class="kpi-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm animate-slide-up" style="animation-delay:.05s">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ingresos / Ajustes</span>
+        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+        </div>
+      </div>
+      <div id="kpiIncome" class="mt-3 text-2xl font-bold tracking-tight">0,00 €</div>
+      <div id="kpiIncomeSub" class="text-xs text-slate-500 mt-1">0 movimientos</div>
+    </div>
+
+    <div class="kpi-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm animate-slide-up" style="animation-delay:.1s">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance Neto</span>
+        <div class="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V6m0 10v2m9-6a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+      </div>
+      <div id="kpiBalance" class="mt-3 text-2xl font-bold tracking-tight">0,00 €</div>
+      <div id="kpiBalanceSub" class="text-xs text-slate-500 mt-1">—</div>
+    </div>
+
+    <div class="kpi-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm animate-slide-up" style="animation-delay:.15s">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pendientes</span>
+        <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+      </div>
+      <div id="kpiPending" class="mt-3 text-2xl font-bold tracking-tight">0</div>
+      <div id="kpiPendingSub" class="text-xs text-slate-500 mt-1">Ajustes pendientes</div>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 class="text-sm font-semibold">Gastos por Categoría</h3>
+          <p class="text-xs text-slate-500">Distribución porcentual</p>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20"></div>
+      </div>
+      <div class="relative h-72"><canvas id="chartDonut"></canvas></div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 class="text-sm font-semibold">Top 5 Grupos / Fondos</h3>
+          <p class="text-xs text-slate-500">Mayor volumen de gasto</p>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20"></div>
+      </div>
+      <div class="relative h-72"><canvas id="chartBars"></canvas></div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 class="text-sm font-semibold">Evolución en el Tiempo</h3>
+          <p class="text-xs text-slate-500">Gasto diario acumulado</p>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20"></div>
+      </div>
+      <div class="relative h-72"><canvas id="chartLine"></canvas></div>
+    </div>
+  </section>
+
+  <!-- Table -->
+  <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div>
+        <h3 class="text-sm font-semibold">Movimientos</h3>
+        <p id="tableCount" class="text-xs text-slate-500">0 registros</p>
+      </div>
+      <div class="sm:ml-auto relative w-full sm:w-72">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>
+        <input id="searchInput" type="text" placeholder="Buscar concepto, grupo, categoría..." class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs uppercase tracking-wider">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Fecha</th>
+            <th class="px-4 py-3 text-left font-semibold">Categoría</th>
+            <th class="px-4 py-3 text-left font-semibold">Grupo / Fondo</th>
+            <th class="px-4 py-3 text-left font-semibold">Concepto</th>
+            <th class="px-4 py-3 text-right font-semibold">Importe</th>
+            <th class="px-4 py-3 text-left font-semibold">Tipo</th>
+            <th class="px-4 py-3 text-left font-semibold">Prevista</th>
+            <th class="px-4 py-3 text-left font-semibold">Resolución</th>
+          </tr>
+        </thead>
+        <tbody id="tbody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+      </table>
+    </div>
+    <div id="emptyState" class="hidden py-16 text-center">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h13M9 17H4a1 1 0 01-1-1V6a1 1 0 011-1h5m0 12V5m0 12h11a1 1 0 001-1V9"/></svg>
+      </div>
+      <p class="text-sm font-medium">No hay movimientos</p>
+      <p class="text-xs text-slate-500 mt-1">Prueba a ajustar los filtros o añade uno nuevo.</p>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs text-slate-400 py-6">
+    FinControl · Conectado a Google Sheets · <span id="apiStatus" class="font-medium">Datos locales</span>
+  </footer>
+</main>
+
+<!-- Modal -->
+<div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="modal-backdrop absolute inset-0 bg-slate-950/60 backdrop-blur-sm" data-close></div>
+  <div class="modal-panel relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+    <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div>
+        <h3 class="text-base font-semibold">Nuevo movimiento</h3>
+        <p class="text-xs text-slate-500">Registra un gasto, ingreso o ajuste</p>
+      </div>
+      <button data-close class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form" class="p-5 space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Fecha *</label>
+          <input name="fecha" type="date" required class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+        </div>
+        <div>
+          <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Tipo *</label>
+          <select name="tipo" required class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+            <option>Movimiento</option>
+            <option>Ajuste Cerrado</option>
+            <option>Ajuste Pendiente</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Categoría *</label>
+          <select name="categoria" required class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40" id="selCat"></select>
+        </div>
+        <div>
+          <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Grupo / Fondo *</label>
+          <select name="grupo" required class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40" id="selGroup"></select>
+        </div>
+      </div>
+      <div>
+        <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Concepto *</label>
+        <input name="concepto" type="text" required placeholder="Ej. Iryo, Hoteles, Cena..." class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+      </div>
+      <div>
+        <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Importe (€) *</label>
+        <input name="importe" type="number" step="0.01" required placeholder="Usa negativo para gasto, positivo para ingreso" class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Fecha prevista</label>
+          <input name="fechaPrevista" type="date" class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+        </div>
+        <div>
+          <label class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Fecha resolución</label>
+          <input name="fechaResolucion" type="date" class="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40"/>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button type="button" data-close class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700">Cancelar</button>
+        <button type="submit" class="btn-primary px-4 py-2 text-sm font-semibold text-white rounded-lg">Guardar movimiento</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-slate-900 text-white text-sm shadow-2xl border border-slate-700"></div>
+
+<script>
+/* =========================================================
+   CONFIG
+   ========================================================= */
+const API_URL = "https://script.google.com/macros/s/AKfycbz7Ow7uNyIipw5t-aqJLxgGH7cwh5gqOz00N8OdHN1aoWtAhY6zXhg_TVq721t96e3rQg/exec";
+
+const CATEGORIES = ['Viajes','Personal','Celebraciones','Finanzas','Gestión','Ajuste','Hogar','Salud','Ocio','Alimentación'];
+const GROUPS = ['Mami Marisol','Ale','Vacaciones verano','Cenita llegada mami','Inversiones','Juanmi','Cumple Juanmi','Norte España','El Salvador','General'];
+
+const CAT_COLORS = {
+  'Viajes':'#10b981','Personal':'#6366f1','Celebraciones':'#f59e0b',
+  'Finanzas':'#3b82f6','Gestión':'#8b5cf6','Ajuste':'#ec4899',
+  'Hogar':'#14b8a6','Salud':'#ef4444','Ocio':'#f97316','Alimentación':'#84cc16'
+};
+
+/* =========================================================
+   MOCK DATA
+   ========================================================= */
+const MOCK_DATA = [
+  { fecha:'2026-08-01', categoria:'Viajes', grupo:'Norte España', concepto:'Iryo tren Madrid-Bilbao', importe:-87.40, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-01' },
+  { fecha:'2026-08-02', categoria:'Viajes', grupo:'Norte España', concepto:'Hoteles San Sebastián 2 noches', importe:-218.00, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-02' },
+  { fecha:'2026-08-03', categoria:'Alimentación', grupo:'Norte España', concepto:'Restaurante txuleta', importe:-64.50, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-03' },
+  { fecha:'2026-08-05', categoria:'Viajes', grupo:'Vacaciones verano', concepto:'Vuelo ida Nena', importe:-142.30, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-05' },
+  { fecha:'2026-08-06', categoria:'Ocio', grupo:'Vacaciones verano', concepto:'PortAventura entradas', importe:-189.00, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-06' },
+  { fecha:'2026-08-08', categoria:'Celebraciones', grupo:'Cenita llegada mami', concepto:'Cena llegada restaurante', importe:-132.75, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-08' },
+  { fecha:'2026-08-10', categoria:'Personal', grupo:'Mami Marisol', concepto:'Regalo bienvenida', importe:-55.00, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-10' },
+  { fecha:'2026-08-12', categoria:'Celebraciones', grupo:'Cumple Juanmi', concepto:'Tarta y decoración', importe:-48.20, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-12' },
+  { fecha:'2026-08-14', categoria:'Viajes', grupo:'El Salvador', concepto:'Vuelo internacional', importe:-612.00, tipo:'Ajuste Pendiente', fechaPrevista:'2026-09-01', fechaResolucion:'' },
+  { fecha:'2026-08-15', categoria:'Finanzas', grupo:'Inversiones', concepto:'Comisiones broker', importe:-24.80, tipo:'Ajuste Cerrado', fechaPrevista:'', fechaResolucion:'2026-08-16' },
+  { fecha:'2026-08-17', categoria:'Ajuste', grupo:'Inversiones', concepto:'Dividendos recibidos', importe:1308.48, tipo:'Ajuste Cerrado', fechaPrevista:'', fechaResolucion:'2026-08-17' },
+  { fecha:'2026-08-18', categoria:'Personal', grupo:'Ale', concepto:'Compra ropa temporada', importe:-89.90, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-18' },
+  { fecha:'2026-08-20', categoria:'Gestión', grupo:'General', concepto:'Gestoría trimestral', importe:-75.00, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-20' },
+  { fecha:'2026-08-22', categoria:'Viajes', grupo:'El Salvador', concepto:'Hotel San Salvador 4 noches', importe:-320.00, tipo:'Ajuste Pendiente', fechaPrevista:'2026-09-05', fechaResolucion:'' },
+  { fecha:'2026-08-23', categoria:'Hogar', grupo:'General', concepto:'Supermercado semanal', importe:-112.34, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-23' },
+  { fecha:'2026-08-25', categoria:'Celebraciones', grupo:'Cumple Juanmi', concepto:'Comida familiar', importe:-156.40, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-25' },
+  { fecha:'2026-08-27', categoria:'Ajuste', grupo:'Mami Marisol', concepto:'Transferencia recibida', importe:500.00, tipo:'Ajuste Cerrado', fechaPrevista:'', fechaResolucion:'2026-08-27' },
+  { fecha:'2026-08-28', categoria:'Viajes', grupo:'Norte España', concepto:'Alquiler coche', importe:-145.60, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-28' },
+  { fecha:'2026-08-29', categoria:'Salud', grupo:'General', concepto:'Farmacia', importe:-22.15, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-29' },
+  { fecha:'2026-08-30', categoria:'Ocio', grupo:'Juanmi', concepto:'Entradas cine', importe:-32.00, tipo:'Movimiento', fechaPrevista:'', fechaResolucion:'2026-08-30' },
+];
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let DATA = [...MOCK_DATA];
+let chartDonut, chartBars, chartLine;
+
+/* =========================================================
+   UTILS
+   ========================================================= */
+const fmtEUR = n => new Intl.NumberFormat('es-ES', { style:'currency', currency:'EUR' }).format(n);
+const fmtDate = d => {
+  if (!d) return '—';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y.slice(2)}`;
+};
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+function toast(msg, type='info') {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl text-white text-sm shadow-2xl border ${
+    type==='error' ? 'bg-rose-600 border-rose-500' :
+    type==='success' ? 'bg-emerald-600 border-emerald-500' :
+    'bg-slate-900 border-slate-700'
+  }`;
+  t.classList.remove('hidden');
+  setTimeout(()=> t.classList.add('hidden'), 2800);
+}
+
+function typeBadge(tipo) {
+  const map = {
+    'Movimiento':        { bg:'bg-emerald-500/10 dark:bg-emerald-500/15', text:'text-emerald-600 dark:text-emerald-400', dot:'bg-emerald-500' },
+    'Ajuste Cerrado':    { bg:'bg-purple-500/10 dark:bg-purple-500/15',   text:'text-purple-600 dark:text-purple-400',   dot:'bg-purple-500' },
+    'Ajuste Pendiente':  { bg:'bg-amber-500/10 dark:bg-amber-500/15',     text:'text-amber-600 dark:text-amber-400',     dot:'bg-amber-500' },
+  };
+  const c = map[tipo] || map['Movimiento'];
+  return `<span class="badge ${c.bg} ${c.text}"><span class="dot ${c.dot}"></span>${tipo}</span>`;
+}
+
+/* =========================================================
+   FILTERS
+   ========================================================= */
+function getFilters() {
+  return {
+    from: $('#fFrom').value,
+    to: $('#fTo').value,
+    cat: $('#fCat').value,
+    group: $('#fGroup').value,
+    type: $('#fType').value,
+    search: $('#searchInput').value.trim().toLowerCase()
+  };
+}
+
+function applyFilters(arr) {
+  const f = getFilters();
+  return arr.filter(r => {
+    if (f.from && r.fecha < f.from) return false;
+    if (f.to && r.fecha > f.to) return false;
+    if (f.cat && r.categoria !== f.cat) return false;
+    if (f.group && r.grupo !== f.group) return false;
+    if (f.type && r.tipo !== f.type) return false;
+    if (f.search) {
+      const hay = `${r.concepto} ${r.grupo} ${r.categoria} ${r.tipo}`.toLowerCase();
+      if (!hay.includes(f.search)) return false;
+    }
+    return true;
+  });
+}
+
+function populateFilterSelects() {
+  const cats = [...new Set(DATA.map(r=>r.categoria))].sort();
+  const groups = [...new Set(DATA.map(r=>r.grupo))].sort();
+  const fill = (sel, items, label) => {
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${label}</option>` + items.map(i=>`<option>${i}</option>`).join('');
+    sel.value = cur;
+  };
+  fill($('#fCat'), cats, 'Todas');
+  fill($('#fGroup'), groups, 'Todos');
+  // form selects
+  $('#selCat').innerHTML = CATEGORIES.map(c=>`<option>${c}</option>`).join('');
+  $('#selGroup').innerHTML = GROUPS.map(g=>`<option>${g}</option>`).join('');
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+function render() {
+  const filtered = applyFilters(DATA);
+
+  // KPIs
+  const expenses = filtered.filter(r => r.importe < 0);
+  const income = filtered.filter(r => r.importe > 0);
+  const totalExp = expenses.reduce((s,r)=>s+r.importe, 0);
+  const totalInc = income.reduce((s,r)=>s+r.importe, 0);
+  const balance = totalExp + totalInc;
+  const pending = filtered.filter(r => r.tipo === 'Ajuste Pendiente').length;
+
+  $('#kpiExpenses').textContent = fmtEUR(totalExp);
+  $('#kpiExpenses').className = `mt-3 text-2xl font-bold tracking-tight ${totalExp<0?'text-rose-500':'text-slate-800 dark:text-slate-100'}`;
+  $('#kpiExpensesSub').textContent = `${expenses.length} movimientos`;
+
+  $('#kpiIncome').textContent = fmtEUR(totalInc);
+  $('#kpiIncome').className = `mt-3 text-2xl font-bold tracking-tight ${totalInc>0?'text-emerald-500':'text-slate-800 dark:text-slate-100'}`;
+  $('#kpiIncomeSub').textContent = `${income.length} movimientos`;
+
+  $('#kpiBalance').textContent = fmtEUR(balance);
+  $('#kpiBalance').className = `mt-3 text-2xl font-bold tracking-tight ${balance>=0?'text-emerald-500':'text-rose-500'}`;
+  $('#kpiBalanceSub').textContent = balance >= 0 ? 'Balance positivo' : 'Balance negativo';
+
+  $('#kpiPending').textContent = pending;
+  $('#kpiPending').className = `mt-3 text-2xl font-bold tracking-tight ${pending>0?'text-amber-500':'text-slate-800 dark:text-slate-100'}`;
+
+  // Table
+  const sorted = [...filtered].sort((a,b)=> b.fecha.localeCompare(a.fecha));
+  $('#tableCount').textContent = `${sorted.length} registro${sorted.length!==1?'s':''}`;
+  $('#tbody').innerHTML = sorted.map(r => {
+    const amtColor = r.importe < 0 ? 'text-rose-500' : 'text-emerald-500';
+    return `
+      <tr class="table-row hover:bg-slate-50 dark:hover:bg-slate-800/40">
+        <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-xs">${fmtDate(r.fecha)}</td>
+        <td class="px-4 py-3"><span class="inline-flex items-center gap-1.5"><span class="dot" style="background:${CAT_COLORS[r.categoria]||'#64748b'}"></span>${r.categoria}</span></td>
+        <td class="px-4 py-3 font-medium">${r.grupo}</td>
+        <td class="px-4 py-3 text-slate-600 dark:text-slate-400">${r.concepto}</td>
+        <td class="px-4 py-3 text-right font-semibold font-mono ${amtColor}">${fmtEUR(r.importe)}</td>
+        <td class="px-4 py-3">${typeBadge(r.tipo)}</td>
+        <td class="px-4 py-3 text-xs text-slate-500 font-mono">${r.fechaPrevista ? fmtDate(r.fechaPrevista) : '—'}</td>
+        <td class="px-4 py-3 text-xs text-slate-500 font-mono">${r.fechaResolucion ? fmtDate(r.fechaResolucion) : '—'}</td>
+      </tr>`;
+  }).join('');
+  $('#emptyState').classList.toggle('hidden', sorted.length > 0);
+
+  renderCharts(filtered);
+}
+
+/* =========================================================
+   CHARTS
+   ========================================================= */
+function getChartColors() {
+  const dark = document.documentElement.classList.contains('dark');
+  return {
+    grid: dark ? 'rgba(148,163,184,.08)' : 'rgba(15,23,42,.06)',
+    text: dark ? '#94a3b8' : '#64748b',
+    tooltipBg: dark ? '#0f172a' : '#ffffff',
+    tooltipBorder: dark ? '#1e293b' : '#e2e8f0'
+  };
+}
+
+function chartDefaults() {
+  const c = getChartColors();
+  Chart.defaults.color = c.text;
+  Chart.defaults.font.family = 'Inter, sans-serif';
+  Chart.defaults.font.size = 11;
+}
+
+function renderCharts(data) {
+  chartDefaults();
+  const c = getChartColors();
+
+  // Donut: gastos por categoría
+  const catMap = {};
+  data.filter(r => r.importe < 0).forEach(r => {
+    catMap[r.categoria] = (catMap[r.categoria] || 0) + Math.abs(r.importe);
+  });
+  const catLabels = Object.keys(catMap).sort((a,b)=>catMap[b]-catMap[a]);
+  const catValues = catLabels.map(l => +catMap[l].toFixed(2));
+  const catColors = catLabels.map(l => CAT_COLORS[l] || '#64748b');
+
+  if (chartDonut) chartDonut.destroy();
+  chartDonut = new Chart($('#chartDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: catLabels,
+      datasets: [{
+        data: catValues,
+        backgroundColor: catColors,
+        borderColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff',
+        borderWidth: 3,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:10, font:{size:11} } },
+        tooltip: {
+          backgroundColor: c.tooltipBg, borderColor: c.tooltipBorder, borderWidth:1, padding:10, cornerRadius:8,
+          callbacks: { label: ctx => ` ${ctx.label}: ${fmtEUR(ctx.parsed)}` }
+        }
+      }
+    }
+  });
+
+  // Bars: top 5 grupos
+  const grpMap = {};
+  data.filter(r => r.importe < 0).forEach(r => {
+    grpMap[r.grupo] = (grpMap[r.grupo] || 0) + Math.abs(r.importe);
+  });
+  const top5 = Object.entries(grpMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const grpLabels = top5.map(t=>t[0]);
+  const grpValues = top5.map(t => +t[1].toFixed(2));
+
+  if (chartBars) chartBars.destroy();
+  chartBars = new Chart($('#chartBars'), {
+    type: 'bar',
+    data: {
+      labels: grpLabels,
+      datasets: [{
+        data: grpValues,
+        backgroundColor: ctx => {
+          const g = ctx.chart.ctx.createLinearGradient(0,0,0,260);
+          g.addColorStop(0,'rgba(59,130,246,.85)');
+          g.addColorStop(1,'rgba(99,102,241,.45)');
+          return g;
+        },
+        borderRadius: 8,
+        borderSkipped: false,
+        barThickness: 28
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis:'y',
+      plugins: {
+        legend:{display:false},
+        tooltip: {
+          backgroundColor: c.tooltipBg, borderColor: c.tooltipBorder, borderWidth:1, padding:10, cornerRadius:8,
+          callbacks: { label: ctx => ` ${fmtEUR(ctx.parsed.x)}` }
+        }
+      },
+      scales: {
+        x: { grid:{color:c.grid}, ticks:{ callback: v => fmtEUR(v) } },
+        y: { grid:{display:false} }
+      }
+    }
+  });
+
+  // Line: evolución diaria
+  const dayMap = {};
+  data.forEach(r => {
+    if (!dayMap[r.fecha]) dayMap[r.fecha] = 0;
+    dayMap[r.fecha] += r.importe;
+  });
+  const days = Object.keys(dayMap).sort();
+  let acc = 0;
+  const accValues = days.map(d => { acc += dayMap[d]; return +acc.toFixed(2); });
+  const expenseValues = days.map(d => {
+    const exp = data.filter(r => r.fecha===d && r.importe<0).reduce((s,r)=>s+r.importe,0);
+    return +Math.abs(exp).toFixed(2);
+  });
+
+  if (chartLine) chartLine.destroy();
+  const ctxL = $('#chartLine').getContext('2d');
+  const grad = ctxL.createLinearGradient(0,0,0,260);
+  grad.addColorStop(0,'rgba(16,185,129,.35)');
+  grad.addColorStop(1,'rgba(16,185,129,0)');
+
+  chartLine = new Chart($('#chartLine'), {
+    type: 'line',
+    data: {
+      labels: days.map(fmtDate),
+      datasets: [
+        {
+          label: 'Gasto diario',
+          data: expenseValues,
+          borderColor: '#f43f5e',
+          backgroundColor: 'rgba(244,63,94,.08)',
+          borderWidth: 2, tension: .35, fill: false, pointRadius: 3, pointHoverRadius: 5,
+          pointBackgroundColor:'#f43f5e'
+        },
+        {
+          label: 'Balance acumulado',
+          data: accValues,
+          borderColor: '#10b981',
+          backgroundColor: grad,
+          borderWidth: 2.5, tension: .35, fill: true, pointRadius: 0, pointHoverRadius: 5,
+          pointBackgroundColor:'#10b981'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:10, font:{size:11} } },
+        tooltip: {
+          backgroundColor: c.tooltipBg, borderColor: c.tooltipBorder, borderWidth:1, padding:10, cornerRadius:8,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtEUR(ctx.parsed.y)}` }
+        }
+      },
+      scales: {
+        x: { grid:{display:false}, ticks:{ maxTicksLimit: 7 } },
+        y: { grid:{color:c.grid}, ticks:{ callback: v => fmtEUR(v) } }
+      }
+    }
+  });
+}
+
+/* =========================================================
+   API: Google Apps Script
+   ========================================================= */
+async function fetchFromAPI() {
+  try {
+    $('#apiStatus').textContent = 'Sincronizando...';
+    const res = await fetch(API_URL + '?action=get', { method:'GET' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json && Array.isArray(json.data) && json.data.length > 0) {
+      DATA = json.data.map(r => ({
+        fecha: r.fecha || '',
+        categoria: r.categoria || '',
+        grupo: r.grupo || '',
+        concepto: r.concepto || '',
+        importe: parseFloat(r.importe) || 0,
+        tipo: r.tipo || 'Movimiento',
+        fechaPrevista: r.fechaPrevista || '',
+        fechaResolucion: r.fechaResolucion || ''
+      }));
+      $('#apiStatus').textContent = `Conectado · ${DATA.length} registros`;
+      toast('Datos sincronizados desde Google Sheets', 'success');
+    } else {
+      $('#apiStatus').textContent = 'Datos locales (API vacía)';
+    }
+  } catch (e) {
+    console.warn('API error, using mock data', e);
+    $('#apiStatus').textContent = 'Datos locales (modo offline)';
+    toast('Usando datos locales. Revisa la conexión con Apps Script.', 'error');
+  }
+}
+
+async function postToAPI(row) {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      // text/plain evita el preflight CORS con Google Apps Script
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(row)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json && json.ok) {
+      toast('Movimiento guardado en Google Sheets', 'success');
+      return true;
+    } else {
+      throw new Error(json?.error || 'Respuesta inválida');
+    }
+  } catch (e) {
+    console.warn('POST error', e);
+    toast('Guardado local (error al contactar API)', 'error');
+    return false;
+  }
+}
+
+/* =========================================================
+   MODAL / FORM
+   ========================================================= */
+function openModal() {
+  $('#modal').classList.remove('hidden');
+  $('#form').reset();
+  $('#form [name=fecha]').valueAsDate = new Date();
+}
+function closeModal() { $('#modal').classList.add('hidden'); }
+
+$('#newBtn').addEventListener('click', openModal);
+$('#modal').addEventListener('click', e => {
+  if (e.target.matches('[data-close]') || e.target === $('#modal')) closeModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const row = {
+    fecha: fd.get('fecha'),
+    categoria: fd.get('categoria'),
+    grupo: fd.get('grupo'),
+    concepto: fd.get('concepto').trim(),
+    importe: parseFloat(fd.get('importe')),
+    tipo: fd.get('tipo'),
+    fechaPrevista: fd.get('fechaPrevista') || '',
+    fechaResolucion: fd.get('fechaResolucion') || ''
+  };
+  if (!row.fecha || !row.categoria || !row.grupo || !row.concepto || isNaN(row.importe)) {
+    toast('Revisa los campos obligatorios', 'error');
+    return;
+  }
+  // Optimistic: add locally first
+  DATA.push(row);
+  populateFilterSelects();
+  render();
+  closeModal();
+
+  // Then sync to API
+  const ok = await postToAPI(row);
+  if (!ok) {
+    // keep local, already added
+  }
+});
+
+/* =========================================================
+   EVENTS
+   ========================================================= */
+['fFrom','fTo','fCat','fGroup','fType'].forEach(id => {
+  $('#'+id).addEventListener('change', render);
+});
+$('#searchInput').addEventListener('input', render);
+$('#resetFilters').addEventListener('click', () => {
+  ['fFrom','fTo'].forEach(id => $('#'+id).value = '');
+  ['fCat','fGroup','fType'].forEach(id => $('#'+id).value = '');
+  $('#searchInput').value = '';
+  render();
+});
+$('#syncBtn').addEventListener('click', fetchFromAPI);
+
+// Theme
+const themeBtn = $('#themeBtn');
+function applyTheme() {
+  const saved = localStorage.getItem('fc-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const dark = saved ? saved === 'dark' : prefersDark;
+  document.documentElement.classList.toggle('dark', dark);
+}
+themeBtn.addEventListener('click', () => {
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('fc-theme', isDark ? 'dark' : 'light');
+  render(); // re-render charts with new colors
+});
+applyTheme();
+
+/* =========================================================
+   INIT
+   ========================================================= */
+populateFilterSelects();
+render();
+// Initial API sync (non-blocking)
+fetchFromAPI().then(() => { populateFilterSelects(); render(); });
+</script>
+</body>
+</html>
