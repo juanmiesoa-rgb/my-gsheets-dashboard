@@ -1,558 +1,263 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trade Overview</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { colors: { slate: { 950: '#020617' } } } }
-        }
-    </script>
-    <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Recharts -->
-    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
-    
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-        .animate-in { animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Overview</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --text:#17202a; --muted:#6f7782;
+  --line:#e7e9ed; --accent:#111827; --green:#16805d; --red:#c2413b;
+  --amber:#b7791f; --amberbg:#fff7df; --closed:#f0f2f4;
+  --shadow:0 10px 35px rgba(20,30,45,.07);
+}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+header{padding:28px 5vw 18px;background:rgba(255,255,255,.9);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)}
+.top{display:flex;justify-content:space-between;gap:20px;align-items:center;max-width:1500px;margin:auto}
+h1{margin:0;font-size:28px;letter-spacing:-.8px}.subtitle{color:var(--muted);margin-top:5px;font-size:14px}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button,input,select{font:inherit} button{border:1px solid var(--line);background:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;color:var(--text)}button.primary{background:var(--text);color:#fff;border-color:var(--text)}
+main{max-width:1500px;margin:0 auto;padding:28px 5vw 60px}
+.notice{background:#eef4ff;border:1px solid #dbe7ff;padding:13px 16px;border-radius:12px;color:#34435c;margin-bottom:22px;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:19px;box-shadow:var(--shadow)}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}.value{font-size:28px;font-weight:750;letter-spacing:-.8px;margin-top:9px}.small{font-size:12px;color:var(--muted);margin-top:8px}
+.green{color:var(--green)}.red{color:var(--red)}.amber{color:var(--amber)}
+.section{margin-top:28px}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:13px}.section h2{font-size:18px;margin:0}.section p{margin:5px 0 0;color:var(--muted);font-size:13px}
+.two{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:10px;border-bottom:1px solid var(--line)}td{padding:13px 10px;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:0}
+.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:12px;font-weight:650}.movement{background:#eef0f3;color:#49515a}.adjustment{background:#edf2ff;color:#425a99}.pending{background:var(--amberbg);color:#8a6118}.closed{background:#edf7f3;color:#287458}
+.row-pending{background:#fffdf7}.amount{font-variant-numeric:tabular-nums;font-weight:650}
+.bar-row{display:grid;grid-template-columns:150px 1fr 100px;gap:12px;align-items:center;margin:14px 0;font-size:13px}.bar{height:10px;background:#eef0f2;border-radius:999px;overflow:hidden}.fill{height:100%;background:#394150;border-radius:999px}
+.group-list{display:grid;gap:10px}.group{padding:14px;border:1px solid var(--line);border-radius:12px;display:flex;justify-content:space-between;gap:10px;align-items:center}.group-name{font-weight:650}.group-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.filters{display:grid;grid-template-columns:2fr repeat(4,1fr);gap:10px;margin-bottom:15px}.filters input,.filters select{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px}
+.empty{color:var(--muted);padding:22px;text-align:center}
+#loading{display:none}
+@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.filters{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){header{position:static}.top{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.filters{grid-template-columns:1fr}.bar-row{grid-template-columns:100px 1fr 80px}main{padding:20px 14px}header{padding:20px 14px}.table-wrap{overflow:auto}}
+</style>
 </head>
-<body class="bg-slate-50 text-slate-900 transition-colors duration-300">
-    <div id="root"></div>
+<body>
+<header>
+  <div class="top">
+    <div><h1>Trade Overview</h1><div class="subtitle">Personal financial management</div></div>
+    <div class="controls">
+      <button id="refreshBtn">↻ Refresh data</button>
+      <button id="demoBtn">Load demo data</button>
+      <button class="primary" id="balanceBtn">Edit current balance</button>
+    </div>
+  </div>
+</header>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-        const { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+<main>
+<div class="notice">
+  This dashboard reads data dynamically from your published Google Sheet CSV. If Google blocks browser requests when opening this file directly, use the “Load demo data” button to test the dashboard, or run the file through a small local web server.
+</div>
 
-        // --- SVG Icons ---
-        const Icon = ({ path, className = "w-5 h-5" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={path} /></svg>
-        );
-        const Icons = {
-            Plus: <Icon path="M5 12h14M12 5v14" />,
-            Search: <Icon path="M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />,
-            Moon: <Icon path="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />,
-            Sun: <Icon path="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />,
-            ArrowUpRight: <Icon path="M7 17L17 7M7 7h10v10" className="w-4 h-4" />,
-            ArrowDownRight: <Icon path="M7 7l10 10M17 7v10H7" className="w-4 h-4" />,
-            AlertCircle: <Icon path="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 8v4M12 16h.01" className="w-4 h-4" />,
-            CheckCircle2: <Icon path="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM9 12l2 2 4-4" className="w-4 h-4" />,
-            Clock: <Icon path="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 6v6l4 2" />,
-            TrendingUp: <Icon path="M23 6l-9.5 9.5-5-5L1 18M17 6h6v6" className="w-4 h-4" />,
-            Wallet: <Icon path="M21 12V7H5a2 2 0 0 1 0-4h14v4M3 5v14a2 2 0 0 0 2 2h16v-5M18 12a2 2 0 0 0 0 4h4v-4Z" className="w-4 h-4" />,
-            Calendar: <Icon path="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />,
-            X: <Icon path="M18 6L6 18M6 6l12 12" className="w-5 h-5" />,
-            Edit2: <Icon path="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" className="w-4 h-4" />,
-            Trash2: <Icon path="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" className="w-4 h-4" />,
-            Save: <Icon path="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8" className="w-4 h-4" />,
-            RefreshCw: <Icon path="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" className="w-8 h-8" />
-        };
+<section class="grid">
+  <div class="card"><div class="label">Current Balance</div><div class="value" id="currentBalance">—</div><div class="small">Manually entered</div></div>
+  <div class="card"><div class="label">Real Balance</div><div class="value" id="realBalance">—</div><div class="small">After pending adjustments</div></div>
+  <div class="card"><div class="label">Expected to Return</div><div class="value green" id="returning">—</div><div class="small">Negative pending adjustments</div></div>
+  <div class="card"><div class="label">Expected to Leave</div><div class="value red" id="leaving">—</div><div class="small">Positive pending adjustments</div></div>
+  <div class="card"><div class="label">Open Adjustments</div><div class="value amber" id="openCount">—</div><div class="small">Still pending</div></div>
+</section>
 
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbycj8s033Gh_hxlQ-g7iQFZeg2VM9Dv3TfBaHlbMwUmUBLWevFbJm66M8PoeJqQMXAO7g/exec";
+<section class="section two">
+  <div class="panel">
+    <div class="section-head"><div><h2>Category analysis</h2><p>Net amount by category</p></div></div>
+    <div id="categoryBars"></div>
+  </div>
+  <div class="panel">
+    <div class="section-head"><div><h2>Projects & Groupings</h2><p>Largest financial groupings</p></div></div>
+    <div class="group-list" id="groups"></div>
+  </div>
+</section>
 
-        const SAMPLE_DATA = [
-          { id: "rec_1", date: "2026-08-01", category: "Management", grouping: "Monthly Budget", description: "August", amount: 3.04, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_2", date: "2026-08-01", category: "Travel", grouping: "Mami Marisol", description: "Iryo", amount: -44.58, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_3", date: "2026-08-01", category: "Personal", grouping: "Ale", description: "Money pending", amount: -84.69, type: "Adjustment", status: "Closed", closingDate: "" },
-          { id: "rec_4", date: "2026-08-01", category: "Travel", grouping: "Summer Holidays", description: "Hotels", amount: -586.50, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_5", date: "2026-08-02", category: "Travel", grouping: "Mami Marisol", description: "Iryo", amount: -88.97, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_6", date: "2026-08-02", category: "Celebrations", grouping: "Mami Arrival Dinner", description: "Dinner", amount: -111.36, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_7", date: "2026-08-03", category: "Finance", grouping: "Investments", description: "Fees", amount: -50.00, type: "Adjustment", status: "Closed", closingDate: "" },
-          { id: "rec_8", date: "2026-08-04", category: "Personal", grouping: "Juanmi", description: "Personal adjustment", amount: 24.17, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_9", date: "2026-08-08", category: "Travel", grouping: "Summer Holidays", description: "Travel expenses", amount: -379.21, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_10", date: "2026-08-12", category: "Celebrations", grouping: "Juanmi's Birthday", description: "PortAventura", amount: -274.50, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_11", date: "2026-08-18", category: "Travel", grouping: "Northern Spain", description: "Trip", amount: -638.82, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_12", date: "2026-08-19", category: "Travel", grouping: "El Salvador", description: "Nena flight taxes", amount: -26.72, type: "Adjustment", status: "Pending", closingDate: "" },
-          { id: "rec_13", date: "2026-08-19", category: "Celebrations", grouping: "Juanmi's Birthday", description: "César and Marco", amount: 325.64, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_14", date: "2026-08-22", category: "Travel", grouping: "Benidorm and Fau", description: "Trip", amount: -408.52, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_15", date: "2026-08-22", category: "Personal", grouping: "Juanmi", description: "Personal purchase", amount: -42.93, type: "Adjustment", status: "Closed", closingDate: "" },
-          { id: "rec_16", date: "2026-08-27", category: "Work / Benefits", grouping: "CCOO", description: "CCOO", amount: -15.70, type: "Adjustment", status: "Closed", closingDate: "" },
-          { id: "rec_17", date: "2026-08-27", category: "Celebrations", grouping: "Laura's Gift", description: "Gift", amount: -29.99, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_18", date: "2026-08-30", category: "Travel", grouping: "El Salvador", description: "Return flight taxes", amount: -128.63, type: "Adjustment", status: "Pending", closingDate: "" },
-          { id: "rec_19", date: "2026-08-30", category: "Travel", grouping: "El Salvador", description: "Chencho September", amount: -375.00, type: "Adjustment", status: "Pending", closingDate: "" },
-          { id: "rec_20", date: "2026-08-31", category: "Personal", grouping: "Mimi", description: "August", amount: 45.00, type: "Adjustment", status: "Pending", closingDate: "" },
-          { id: "rec_21", date: "2026-09-02", category: "Finance", grouping: "Saving Plan", description: "Fees", amount: -50.00, type: "Adjustment", status: "Pending", closingDate: "" },
-          { id: "rec_22", date: "2026-09-02", category: "Work / Benefits", grouping: "Valencia Shopping Bonus", description: "Shopping bonus", amount: -50.00, type: "Adjustment", status: "Pending", closingDate: "" },
-          { id: "rec_23", date: "2026-09-02", category: "Personal", grouping: "Juanmi", description: "Fuel", amount: -99.85, type: "Adjustment", status: "Closed", closingDate: "" },
-          { id: "rec_24", date: "2026-09-03", category: "Management", grouping: "Monthly Budget", description: "September", amount: 803.08, type: "Movement", status: "Closed", closingDate: "" },
-          { id: "rec_25", date: "2026-09-08", category: "Celebrations", grouping: "Birthday Weekend", description: "Week 1", amount: 0.00, type: "Movement", status: "Closed", closingDate: "" }
-        ];
+<section class="section">
+  <div class="panel">
+    <div class="section-head"><div><h2>Pending Adjustments</h2><p>Items still affecting your real balance</p></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Grouping</th><th>Description</th><th>Amount</th><th>Meaning</th></tr></thead>
+        <tbody id="pendingTable"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
 
-        const CATEGORIES = ["Travel", "Home", "Celebrations", "Finance", "Personal", "Management", "Work / Benefits"];
-        const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#3b82f6'];
+<section class="section">
+  <div class="panel">
+    <div class="section-head"><div><h2>Transaction History</h2><p>Live data from your Trade sheet</p></div></div>
+    <div class="filters">
+      <input id="search" placeholder="Search transactions...">
+      <select id="filterCategory"><option value="">All categories</option></select>
+      <select id="filterGrouping"><option value="">All groupings</option></select>
+      <select id="filterType"><option value="">All types</option><option>Movement</option><option>Adjustment</option></select>
+      <select id="filterStatus"><option value="">All statuses</option><option>Pending</option><option>Closed</option></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Category</th><th>Grouping</th><th>Description</th><th>Amount</th><th>Type</th><th>Status</th><th>Closing Date</th></tr></thead>
+        <tbody id="history"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+</main>
 
-        const formatCurrency = (amount) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
-        const formatDate = (dateStr) => {
-            if (!dateStr) return '-';
-            return new Date(dateStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-        };
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8uwJVwG9pjkPPeDMPrslSITVfyy-c3mK4Ohato_jxEUruWfaJYPgNkjFpieL3OZ3Ulyr7P2gNI2m2/pub?gid=461737912&single=true&output=csv";
 
-        function App() {
-            const [darkMode, setDarkMode] = useState(false);
-            const [transactions, setTransactions] = useState(SAMPLE_DATA);
-            const [currentBalance, setCurrentBalance] = useState(5000.00);
-            const [isLoading, setIsLoading] = useState(true);
-            const [toast, setToast] = useState(null);
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [editingTx, setEditingTx] = useState(null);
-            const [searchQuery, setSearchQuery] = useState("");
-            const [filterType, setFilterType] = useState("All");
-            const [filterStatus, setFilterStatus] = useState("All");
-            const [groupingSort, setGroupingSort] = useState("highest_spending");
+let data = [];
+let currentBalance = Number(localStorage.getItem("tradeCurrentBalance") || 0);
 
-            useEffect(() => {
-                fetch(GAS_URL).then(res => res.json()).then(data => {
-                    if (data && Array.isArray(data) && data.length > 0) {
-                        setTransactions(data);
-                        showToast("Data synced from Google Sheets", "success");
-                    }
-                }).catch(() => {
-                    showToast("Running in offline mode with sample data", "warning");
-                }).finally(() => setIsLoading(false));
-            }, []);
+const demoData = [
+["1 Aug","Management","Monthly Budget","August",3.04,"Movement","Closed",""],
+["1 Aug","Travel","Mami Marisol","Iryo",-44.58,"Movement","Closed",""],
+["1 Aug","Personal","Ale","Money pending",-84.69,"Adjustment","Closed",""],
+["1 Aug","Travel","Summer Holidays","Hotels",-586.50,"Movement","Closed",""],
+["2 Aug","Travel","Mami Marisol","Iryo",-88.97,"Movement","Closed",""],
+["2 Aug","Celebrations","Mami Arrival Dinner","Dinner",-111.36,"Movement","Closed",""],
+["3 Aug","Finance","Investments","Fees",-50,"Adjustment","Closed",""],
+["4 Aug","Personal","Juanmi","Personal adjustment",24.17,"Movement","Closed",""],
+["8 Aug","Travel","Summer Holidays","Travel expenses",-379.21,"Movement","Closed",""],
+["12 Aug","Celebrations","Juanmi's Birthday","PortAventura",-274.50,"Movement","Closed",""],
+["18 Aug","Travel","Northern Spain","Trip",-638.82,"Movement","Closed",""],
+["19 Aug","Travel","El Salvador","Nena flight taxes",-26.72,"Adjustment","Pending",""],
+["19 Aug","Celebrations","Juanmi's Birthday","César and Marco",325.64,"Movement","Closed",""],
+["22 Aug","Travel","Benidorm and Fau","Trip",-408.52,"Movement","Closed",""],
+["22 Aug","Personal","Juanmi","Personal purchase",-42.93,"Adjustment","Closed","22 Aug"],
+["27 Aug","Work / Benefits","CCOO","CCOO",-15.70,"Adjustment","Closed","1 Sep"],
+["27 Aug","Celebrations","Laura's Gift","Gift",-29.99,"Movement","Closed",""],
+["30 Aug","Travel","El Salvador","Return flight taxes",-128.63,"Adjustment","Pending",""],
+["30 Aug","Travel","El Salvador","Chencho September",-375,"Adjustment","Pending",""],
+["31 Aug","Personal","Mimi","August",45,"Adjustment","Pending",""],
+["2 Sep","Finance","Saving Plan","Fees",-50,"Adjustment","Pending",""],
+["2 Sep","Work / Benefits","Valencia Shopping Bonus","Shopping bonus",-50,"Adjustment","Pending",""],
+["2 Sep","Personal","Juanmi","Fuel",-99.85,"Adjustment","Closed","8 Sep"],
+["3 Sep","Management","Monthly Budget","September",803.08,"Movement","Closed",""],
+["8 Sep","Celebrations","Birthday Weekend","Week 1",0,"Movement","Closed",""]
+];
 
-            useEffect(() => {
-                if (toast) {
-                    const timer = setTimeout(() => setToast(null), 3000);
-                    return () => clearTimeout(timer);
-                }
-            }, [toast]);
+function money(v){
+  return new Intl.NumberFormat("en-IE",{style:"currency",currency:"EUR"}).format(v||0);
+}
+function norm(s){return String(s||"").trim().toLowerCase();}
+function parseAmount(v){
+  if(typeof v==="number") return v;
+  let s=String(v||"").replace(/\s/g,"").replace(/€/g,"");
+  if(s.includes(",") && s.includes(".")){ s=s.replace(/\./g,"").replace(",",".");}
+  else if(s.includes(",")){s=s.replace(",",".");}
+  return Number(s)||0;
+}
+function csvParse(text){
+  const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i], n=text[i+1];
+    if(c=='"'){ if(q && n=='"'){cell+='"';i++;} else q=!q; }
+    else if(c=="," && !q){row.push(cell);cell="";}
+    else if((c=="\n"||c=="\r")&&!q){ if(c=="\r"&&n=="\n")i++; row.push(cell); if(row.some(x=>x!==""))rows.push(row); row=[];cell="";}
+    else cell+=c;
+  }
+  if(cell!==""||row.length){row.push(cell);rows.push(row);}
+  return rows;
+}
+function mapRows(rows){
+  const headers=rows[0].map(norm);
+  const aliases={
+    date:["date","fecha"],
+    category:["category","categoría","categoria"],
+    grouping:["grouping","agrupación","agrupacion","group","grupo","fondo"],
+    description:["description","concepto","detalle"],
+    amount:["amount","importe","cantidad"],
+    type:["type","tipo"],
+    status:["status","estado"],
+    closingDate:["closing date","closingdate","fecha cierre","fecha de cierre","fecha compensación","fecha compensacion","fecha regularización","fecha regularizacion"]
+  };
+  function index(key){
+    for(const a of aliases[key]){const i=headers.indexOf(a);if(i>=0)return i;}
+    return -1;
+  }
+  const idx={};Object.keys(aliases).forEach(k=>idx[k]=index(k));
+  return rows.slice(1).map(r=>({
+    date:r[idx.date]||"",
+    category:r[idx.category]||"Uncategorized",
+    grouping:r[idx.grouping]||"Unassigned",
+    description:r[idx.description]||"",
+    amount:parseAmount(r[idx.amount]),
+    type:(r[idx.type]||"Movement").trim(),
+    status:(r[idx.status]||"Closed").trim(),
+    closingDate:r[idx.closingDate]||""
+  }));
+}
+function render(){
+  const pending=data.filter(d=>norm(d.type)==="adjustment"&&norm(d.status)==="pending");
+  const pendingSum=pending.reduce((a,d)=>a+d.amount,0);
+  const expectedReturn=Math.abs(pending.filter(d=>d.amount<0).reduce((a,d)=>a+d.amount,0));
+  const expectedLeave=pending.filter(d=>d.amount>0).reduce((a,d)=>a+d.amount,0);
+  const real=currentBalance-pendingSum;
 
-            const showToast = (msg, type) => setToast({ msg, type });
+  currentBalance=document.getElementById("currentBalance").textContent=money(currentBalance);
+  document.getElementById("realBalance").textContent=money(real);
+  document.getElementById("returning").textContent=money(expectedReturn);
+  document.getElementById("leaving").textContent=money(expectedLeave);
+  document.getElementById("openCount").textContent=pending.length;
 
-            const pendingAdjustments = useMemo(() => transactions.filter(t => t.type === 'Adjustment' && t.status === 'Pending'), [transactions]);
-            const expectedToReturn = useMemo(() => Math.abs(pendingAdjustments.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)), [pendingAdjustments]);
-            const expectedToLeave = useMemo(() => pendingAdjustments.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0), [pendingAdjustments]);
-            const realBalance = useMemo(() => currentBalance - pendingAdjustments.reduce((sum, t) => sum + t.amount, 0), [currentBalance, pendingAdjustments]);
+  const cat={};data.forEach(d=>cat[d.category]=(cat[d.category]||0)+d.amount);
+  const max=Math.max(...Object.values(cat).map(Math.abs),1);
+  document.getElementById("categoryBars").innerHTML=Object.entries(cat).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([k,v])=>
+    `<div class="bar-row"><div>${esc(k)}</div><div class="bar"><div class="fill" style="width:${Math.abs(v)/max*100}%"></div></div><strong class="${v<0?'red':'green'}">${money(v)}</strong></div>`).join("");
 
-            const groupings = useMemo(() => {
-                const groups = {};
-                transactions.forEach(t => {
-                    if (!groups[t.grouping]) groups[t.grouping] = { name: t.grouping, total: 0, count: 0, pending: 0, latestDate: t.date };
-                    groups[t.grouping].total += t.amount;
-                    groups[t.grouping].count += 1;
-                    if (t.type === 'Adjustment' && t.status === 'Pending') groups[t.grouping].pending += t.amount;
-                    if (t.date > groups[t.grouping].latestDate) groups[t.grouping].latestDate = t.date;
-                });
-                return Object.values(groups);
-            }, [transactions]);
+  const groups={};data.forEach(d=>{if(!groups[d.grouping])groups[d.grouping]={amount:0,count:0,pending:0,last:d.date};groups[d.grouping].amount+=d.amount;groups[d.grouping].count++;if(norm(d.type)==="adjustment"&&norm(d.status)==="pending")groups[d.grouping].pending+=d.amount;});
+  document.getElementById("groups").innerHTML=Object.entries(groups).sort((a,b)=>Math.abs(b[1].amount)-Math.abs(a[1].amount)).slice(0,7).map(([k,g])=>
+    `<div class="group"><div><div class="group-name">${esc(k)}</div><div class="group-meta">${g.count} transactions · Pending: ${money(g.pending)}</div></div><strong class="${g.amount<0?'red':'green'}">${money(g.amount)}</strong></div>`).join("");
 
-            const sortedGroupings = useMemo(() => {
-                let sorted = [...groupings];
-                if (groupingSort === 'highest_spending') sorted.sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
-                if (groupingSort === 'largest_pending') sorted.sort((a, b) => Math.abs(b.pending) - Math.abs(a.pending));
-                if (groupingSort === 'most_recent') sorted.sort((a, b) => b.latestDate.localeCompare(a.latestDate));
-                if (groupingSort === 'most_transactions') sorted.sort((a, b) => b.count - a.count);
-                return sorted;
-            }, [groupings, groupingSort]);
+  document.getElementById("pendingTable").innerHTML=pending.length?pending.map(d=>`<tr class="row-pending"><td>${esc(d.date)}</td><td>${esc(d.grouping)}</td><td>${esc(d.description)}</td><td class="amount ${d.amount<0?'red':'green'}">${money(d.amount)}</td><td>${d.amount<0?"Expected to return":"Expected to leave"}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">No pending adjustments 🎉</td></tr>`;
 
-            const categoryData = useMemo(() => {
-                const cats = {};
-                transactions.forEach(t => {
-                    if (!cats[t.category]) cats[t.category] = 0;
-                    cats[t.category] += Math.abs(t.amount);
-                });
-                return Object.entries(cats).map(([name, value], i) => ({ name, value, color: COLORS[i % COLORS.length] }));
-            }, [transactions]);
-
-            const activityData = useMemo(() => {
-                const months = {};
-                transactions.forEach(t => {
-                    const month = t.date.substring(0, 7);
-                    if (!months[month]) months[month] = { month, inflows: 0, outflows: 0, net: 0 };
-                    if (t.amount > 0) months[month].inflows += t.amount;
-                    else months[month].outflows += Math.abs(t.amount);
-                });
-                Object.keys(months).forEach(m => { months[m].net = months[m].inflows - months[m].outflows; });
-                return Object.values(months).sort((a, b) => a.month.localeCompare(b.month));
-            }, [transactions]);
-
-            const filteredTransactions = useMemo(() => {
-                return transactions.filter(t => {
-                    const matchesSearch = t.description.toLowerCase().includes(searchQuery.toLowerCase()) || t.grouping.toLowerCase().includes(searchQuery.toLowerCase());
-                    const matchesType = filterType === "All" || t.type === filterType;
-                    const matchesStatus = filterStatus === "All" || t.status === filterStatus;
-                    return matchesSearch && matchesType && matchesStatus;
-                }).sort((a, b) => b.date.localeCompare(a.date));
-            }, [transactions, searchQuery, filterType, filterStatus]);
-
-            const handleSaveTransaction = (tx) => {
-                const isNew = !tx.id;
-                const newTx = isNew ? { ...tx, id: `rec_${Date.now()}` } : tx;
-                setTransactions(prev => isNew ? [...prev, newTx] : prev.map(t => t.id === tx.id ? newTx : t));
-                setIsModalOpen(false);
-                setEditingTx(null);
-                showToast(isNew ? "Transaction added" : "Transaction updated", "success");
-            };
-
-            const handleDeleteTransaction = (id) => {
-                if (!confirm("Are you sure you want to delete this record?")) return;
-                setTransactions(prev => prev.filter(t => t.id !== id));
-                showToast("Transaction deleted", "warning");
-            };
-
-            const handleQuickClose = (id) => {
-                const tx = transactions.find(t => t.id === id);
-                if (!tx) return;
-                const updatedTx = { ...tx, status: 'Closed', closingDate: new Date().toISOString().split('T')[0] };
-                setTransactions(prev => prev.map(t => t.id === id ? updatedTx : t));
-                showToast("Adjustment marked as Closed", "success");
-            };
-
-            if (isLoading) return <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center"><div className="animate-spin text-indigo-600">{Icons.RefreshCw}</div></div>;
-
-            return (
-                <div className={darkMode ? 'dark' : ''}>
-                    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 transition-colors duration-300">
-                        {toast && (
-                            <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in ${toast.type === 'success' ? 'bg-emerald-600 text-white' : toast.type === 'error' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'}`}>
-                                {toast.type === 'success' ? Icons.CheckCircle2 : Icons.AlertCircle}
-                                <span className="text-sm font-medium">{toast.msg}</span>
-                            </div>
-                        )}
-
-                        <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                                <div>
-                                    <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">TRADE OVERVIEW</h1>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Personal Financial Management</p>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                        {darkMode ? Icons.Sun : Icons.Moon}
-                                    </button>
-                                    <button onClick={() => { setEditingTx(null); setIsModalOpen(true); }} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
-                                        {Icons.Plus} Add Transaction
-                                    </button>
-                                </div>
-                            </div>
-                        </header>
-
-                        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-                            {/* Financial Overview */}
-                            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                                    <div className="relative z-10">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-indigo-100 font-medium flex items-center gap-2">{Icons.Wallet} Real Balance</span>
-                                            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">True Financial Position</span>
-                                        </div>
-                                        <div className="text-4xl sm:text-5xl font-bold tracking-tight mb-2">{formatCurrency(realBalance)}</div>
-                                        <div className="text-sm text-indigo-200 flex items-center gap-2">
-                                            <span>Current TR: {formatCurrency(currentBalance)}</span>
-                                            <span className="w-1 h-1 bg-indigo-300 rounded-full"></span>
-                                            <span>{pendingAdjustments.length} pending adjustments</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-2">{Icons.TrendingUp}<span className="text-sm font-medium">Current TR Balance</span></div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-2xl font-bold text-slate-900 dark:text-white">€</span>
-                                        <input type="number" value={currentBalance} onChange={(e) => setCurrentBalance(parseFloat(e.target.value) || 0)} className="text-2xl font-bold bg-transparent border-b border-slate-300 dark:border-slate-700 focus:border-indigo-500 outline-none w-full text-slate-900 dark:text-white" step="0.01" />
-                                    </div>
-                                    <p className="text-xs text-slate-400 mt-2">Manually enter your Trade Republic balance</p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-2xl p-4">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-emerald-700 dark:text-emerald-400 text-sm font-medium flex items-center gap-1">{Icons.ArrowDownRight} Expected to Return</span>
-                                        </div>
-                                        <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(expectedToReturn)}</div>
-                                        <p className="text-xs text-emerald-600/70 dark:text-emerald-500/70 mt-1">Money owed back to you</p>
-                                    </div>
-                                    <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-2xl p-4">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-rose-700 dark:text-rose-400 text-sm font-medium flex items-center gap-1">{Icons.ArrowUpRight} Expected to Leave</span>
-                                        </div>
-                                        <div className="text-2xl font-bold text-rose-700 dark:text-rose-400">{formatCurrency(expectedToLeave)}</div>
-                                        <p className="text-xs text-rose-600/70 dark:text-rose-500/70 mt-1">Money that will be deducted</p>
-                                    </div>
-                                </div>
-                            </section>
-
-                            {/* Pending Adjustments */}
-                            {pendingAdjustments.length > 0 && (
-                                <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-                                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                                        <h2 className="text-lg font-bold flex items-center gap-2">{Icons.Clock} Pending Adjustments</h2>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1"> Negative = Money returning to you. Positive = Money leaving your account.</p>
-                                    </div>
-                                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                                        {pendingAdjustments.sort((a,b) => b.date.localeCompare(a.date)).map(tx => (
-                                            <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-2 h-12 rounded-full ${tx.amount < 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                                                    <div>
-                                                        <div className="font-semibold text-slate-900 dark:text-white">{tx.grouping}</div>
-                                                        <div className="text-sm text-slate-500 dark:text-slate-400">{tx.description} • {formatDate(tx.date)}</div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`text-right ${tx.amount < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                        <div className="font-bold text-lg">{formatCurrency(tx.amount)}</div>
-                                                        <div className="text-xs font-medium uppercase tracking-wider">{tx.amount < 0 ? 'Returning' : 'Leaving'}</div>
-                                                    </div>
-                                                    <button onClick={() => handleQuickClose(tx.id)} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors" title="Mark as Closed">
-                                                        {Icons.CheckCircle2}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-                            )}
-
-                            {/* Projects & Groupings */}
-                            <section>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-bold flex items-center gap-2">{Icons.Calendar} Projects & Groupings</h2>
-                                    <select value={groupingSort} onChange={(e) => setGroupingSort(e.target.value)} className="text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none">
-                                        <option value="highest_spending">Highest Spending</option>
-                                        <option value="largest_pending">Largest Pending</option>
-                                        <option value="most_recent">Most Recent</option>
-                                        <option value="most_transactions">Most Transactions</option>
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {sortedGroupings.slice(0, 6).map((g) => (
-                                        <div key={g.name} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <h3 className="font-bold text-slate-900 dark:text-white truncate pr-2">{g.name}</h3>
-                                                {g.pending !== 0 && (
-                                                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${g.pending < 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-400'}`}>
-                                                        {g.pending < 0 ? '+' : '-'}{formatCurrency(Math.abs(g.pending))} pending
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-slate-500 dark:text-slate-400">Total Impact</span>
-                                                    <span className={`font-semibold ${g.total >= 0 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>{formatCurrency(g.total)}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-slate-500 dark:text-slate-400">Transactions</span>
-                                                    <span className="font-medium">{g.count}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-slate-500 dark:text-slate-400">Latest Activity</span>
-                                                    <span className="font-medium">{formatDate(g.latestDate)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-
-                            {/* Analytics Row */}
-                            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                                    <h3 className="text-lg font-bold mb-4">Category Analysis</h3>
-                                    <div className="h-64">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                                                    {categoryData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
-                                                </Pie>
-                                                <Tooltip formatter={(value) => formatCurrency(value)} />
-                                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                                    <h3 className="text-lg font-bold mb-4">Financial Activity Over Time</h3>
-                                    <div className="h-64">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={activityData}>
-                                                <defs>
-                                                    <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
-                                                    <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/><stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/></linearGradient>
-                                                </defs>
-                                                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#334155' : '#e2e8f0'} />
-                                                <XAxis dataKey="month" stroke={darkMode ? '#94a3b8' : '#64748b'} fontSize={12} />
-                                                <YAxis stroke={darkMode ? '#94a3b8' : '#64748b'} fontSize={12} tickFormatter={(val) => `€${val}`} />
-                                                <Tooltip formatter={(value) => formatCurrency(value)} />
-                                                <Legend />
-                                                <Area type="monotone" dataKey="inflows" name="Inflows" stroke="#10b981" fillOpacity={1} fill="url(#colorIn)" />
-                                                <Area type="monotone" dataKey="outflows" name="Outflows" stroke="#f43f5e" fillOpacity={1} fill="url(#colorOut)" />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                            </section>
-
-                            {/* Transaction History */}
-                            <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-                                <div className="p-6 border-b border-slate-200 dark:border-slate-800 space-y-4">
-                                    <h2 className="text-lg font-bold">Transaction History</h2>
-                                    <div className="flex flex-col sm:flex-row gap-3">
-                                        <div className="relative flex-1">
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{Icons.Search}</div>
-                                            <input type="text" placeholder="Search description or grouping..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                                        </div>
-                                        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                                            <option value="All">All Types</option>
-                                            <option value="Movement">Movement</option>
-                                            <option value="Adjustment">Adjustment</option>
-                                        </select>
-                                        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                                            <option value="All">All Statuses</option>
-                                            <option value="Pending">Pending</option>
-                                            <option value="Closed">Closed</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-medium">
-                                            <tr>
-                                                <th className="px-6 py-3">Date</th>
-                                                <th className="px-6 py-3">Category</th>
-                                                <th className="px-6 py-3">Grouping</th>
-                                                <th className="px-6 py-3">Description</th>
-                                                <th className="px-6 py-3 text-right">Amount</th>
-                                                <th className="px-6 py-3">Type</th>
-                                                <th className="px-6 py-3">Status</th>
-                                                <th className="px-6 py-3 text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                                            {filteredTransactions.map(tx => (
-                                                <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-600 dark:text-slate-300">{formatDate(tx.date)}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap"><span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">{tx.category}</span></td>
-                                                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{tx.grouping}</td>
-                                                    <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{tx.description}</td>
-                                                    <td className={`px-6 py-4 text-right font-semibold ${tx.amount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{formatCurrency(tx.amount)}</td>
-                                                    <td className="px-6 py-4"><span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${tx.type === 'Movement' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>{tx.type === 'Movement' ? Icons.CheckCircle2 : Icons.AlertCircle}{tx.type}</span></td>
-                                                    <td className="px-6 py-4"><span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${tx.status === 'Pending' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>{tx.status}{tx.status === 'Closed' && tx.closingDate && ` (${formatDate(tx.closingDate)})`}</span></td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            {tx.type === 'Adjustment' && tx.status === 'Pending' && (<button onClick={() => handleQuickClose(tx.id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded" title="Mark Closed">{Icons.CheckCircle2}</button>)}
-                                                            <button onClick={() => { setEditingTx(tx); setIsModalOpen(true); }} className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded" title="Edit">{Icons.Edit2}</button>
-                                                            <button onClick={() => handleDeleteTransaction(tx.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded" title="Delete">{Icons.Trash2}</button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    {filteredTransactions.length === 0 && (<div className="p-12 text-center text-slate-500 dark:text-slate-400">No transactions found matching your filters.</div>)}
-                                </div>
-                            </section>
-                        </main>
-
-                        {/* Transaction Modal */}
-                        {isModalOpen && (
-                            <TransactionModal transaction={editingTx} onClose={() => { setIsModalOpen(false); setEditingTx(null); }} onSave={handleSaveTransaction} />
-                        )}
-                    </div>
-                </div>
-            );
-        }
-
-        function TransactionModal({ transaction, onClose, onSave }) {
-            const [formData, setFormData] = useState({
-                id: transaction?.id || "",
-                date: transaction?.date || new Date().toISOString().split('T')[0],
-                category: transaction?.category || "Personal",
-                grouping: transaction?.grouping || "",
-                description: transaction?.description || "",
-                amount: transaction?.amount || 0,
-                type: transaction?.type || "Movement",
-                status: transaction?.status || "Closed",
-                closingDate: transaction?.closingDate || ""
-            });
-
-            useEffect(() => {
-                if (formData.type === 'Movement') setFormData(prev => ({ ...prev, status: 'Closed' }));
-            }, [formData.type]);
-
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                onSave(formData);
-            };
-
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 dark:border-slate-800 overflow-hidden animate-in">
-                        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                            <h3 className="text-lg font-bold">{transaction ? 'Edit Transaction' : 'Add New Transaction'}</h3>
-                            <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">{Icons.X}</button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
-                                    <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Type</label>
-                                    <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none">
-                                        <option value="Movement">Movement</option>
-                                        <option value="Adjustment">Adjustment</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
-                                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none">
-                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Grouping</label>
-                                <input required type="text" placeholder="e.g., El Salvador 2026, Juanmi" value={formData.grouping} onChange={e => setFormData({...formData, grouping: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
-                                <input required type="text" placeholder="e.g., Hotel, Flight taxes" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Amount (€)</label>
-                                    <input required type="number" step="0.01" placeholder="0.00" value={formData.amount} onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                                    <p className="text-xs text-slate-500 mt-1">Negative = Returning. Positive = Leaving.</p>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
-                                    <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} disabled={formData.type === 'Movement'} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50">
-                                        <option value="Closed">Closed</option>
-                                        <option value="Pending">Pending</option>
-                                    </select>
-                                </div>
-                            </div>
-                            {formData.type === 'Adjustment' && formData.status === 'Closed' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Closing Date</label>
-                                    <input type="date" value={formData.closingDate} onChange={e => setFormData({...formData, closingDate: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                                </div>
-                            )}
-                            <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
-                                <button type="submit" className="flex-1 px-4 py-2.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">{Icons.Save} Save Transaction</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+  fillFilters();
+  renderHistory();
+}
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+function fillFilters(){
+  const cat=document.getElementById("filterCategory"), grp=document.getElementById("filterGrouping");
+  const cv=cat.value, gv=grp.value;
+  cat.innerHTML='<option value="">All categories</option>'+[...new Set(data.map(x=>x.category))].sort().map(x=>`<option>${esc(x)}</option>`).join("");
+  grp.innerHTML='<option value="">All groupings</option>'+[...new Set(data.map(x=>x.grouping))].sort().map(x=>`<option>${esc(x)}</option>`).join("");
+  cat.value=cv;grp.value=gv;
+}
+function renderHistory(){
+  const q=norm(document.getElementById("search").value), fc=document.getElementById("filterCategory").value, fg=document.getElementById("filterGrouping").value, ft=document.getElementById("filterType").value, fs=document.getElementById("filterStatus").value;
+  const rows=data.filter(d=>{
+    const hay=norm(Object.values(d).join(" "));
+    return (!q||hay.includes(q))&&(!fc||d.category===fc)&&(!fg||d.grouping===fg)&&(!ft||norm(d.type)===norm(ft))&&(!fs||norm(d.status)===norm(fs));
+  });
+  document.getElementById("history").innerHTML=rows.length?rows.map(d=>{
+    const pending=norm(d.status)==="pending";
+    return `<tr class="${pending?'row-pending':''}"><td>${esc(d.date)}</td><td>${esc(d.category)}</td><td>${esc(d.grouping)}</td><td>${esc(d.description)}</td><td class="amount ${d.amount<0?'red':'green'}">${money(d.amount)}</td><td><span class="badge ${norm(d.type)==='adjustment'?'adjustment':'movement'}">${esc(d.type)}</span></td><td><span class="badge ${pending?'pending':'closed'}">${esc(d.status)}</span></td><td>${esc(d.closingDate)}</td></tr>`;
+  }).join(""):`<tr><td colspan="8" class="empty">No transactions found.</td></tr>`;
+}
+async function loadLive(){
+  document.getElementById("refreshBtn").textContent="Loading...";
+  try{
+    const res=await fetch(CSV_URL+"&cachebust="+Date.now());
+    if(!res.ok)throw new Error("HTTP "+res.status);
+    const text=await res.text();
+    const rows=csvParse(text);
+    if(rows.length<2)throw new Error("No data found");
+    data=mapRows(rows);
+    render();
+  }catch(e){
+    console.warn(e);
+    alert("The live Google Sheet could not be loaded directly. This can happen because browsers block requests from local HTML files. Try opening the file through a local server, or use Load demo data.");
+  }finally{document.getElementById("refreshBtn").textContent="↻ Refresh data";}
+}
+document.getElementById("refreshBtn").onclick=loadLive;
+document.getElementById("demoBtn").onclick=()=>{data=demoData.map(r=>({date:r[0],category:r[1],grouping:r[2],description:r[3],amount:r[4],type:r[5],status:r[6],closingDate:r[7]}));render();};
+document.getElementById("balanceBtn").onclick=()=>{
+  const v=prompt("Enter the current Trade Republic balance (€):",currentBalance);
+  if(v!==null&&!isNaN(parseFloat(v))){currentBalance=parseFloat(v);localStorage.setItem("tradeCurrentBalance",currentBalance);render();}
+};
+["search","filterCategory","filterGrouping","filterType","filterStatus"].forEach(id=>document.getElementById(id).addEventListener("input",renderHistory));
+document.getElementById("demoBtn").click();
+</script>
 </body>
 </html>
